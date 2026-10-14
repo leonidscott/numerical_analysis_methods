@@ -2,6 +2,8 @@ from typing import Tuple
 from itertools import product
 import math
 
+# Docstring for file below functions
+
 def uval(u: list[float], N: int, row: int, col: int) -> float:
     """Given (r,c), get value of u"""
     return u[uidx(N, row, col)]
@@ -40,8 +42,45 @@ def bc_points(N: int) -> list[Tuple[float, float]]:
     ]
 
 
+"""
+Structured 2D Cartesian mesh for the unit square.
+
+Domain: (x, y) in [0, 1] x [0, 1]
+Discretization:
+    N = number of intervals in each coordinate direction
+    h = 1/N
+    x = col*h, col = [0,N]
+    y = row*h, row = [0,N]
+
+Mesh points:
+    Total:    (N+1)^2
+    Interior: (N-1)^2
+    Boundary: 4*N
+
+Index conventions:
+    row = y-direction index
+    col = x-direction index
+
+Boundary Conditions & Interior Points
+    Boundary points have row or col equal to 0 or N.
+    Interior points have 1 <= row,col <= N-1.
+    BCs all set to u(∂Ω) = 0
+
+Storage:
+    The solution vector u is a flattened 1D array
+    containing all mesh points, including boundaries.
+
+    Row-major indexing: k = row*(N+1) + col
+
+    Therefore: u[k] = u(col, row)
+
+    Moving one column right increases k by 1.
+    Moving one row up increases k by N+1.
+"""
+
 
 import unittest
+import matplotlib.pyplot as plt
 
 class TestMesh(unittest.TestCase):
 
@@ -134,6 +173,46 @@ class TestMesh(unittest.TestCase):
         self.assertEqual(uval(u, N, 2, 3), 13.0)
         self.assertEqual(uval(u, N, 4, 4), 24.0)
 
+def plot_mesh(N: int = 32) -> None:
+    """Plot interior and boundary points of a 2D Cartesian mesh."""
+    print(f"\n\n --> Plotting mesh for N = {N}")
+    dx = h(N)
+
+    # Generate physical coordinates
+    interior = [
+        coord(dx, row, col)
+        for row, col in interior_points(N)
+    ]
+
+    boundary = [
+        coord(dx, row, col)
+        for row, col in bc_points(N)
+    ]
+
+    # Plot mesh
+    fig, ax = plt.subplots(figsize=(7, 7))
+    # Plot interior points
+    if interior:
+        xi, yi = zip(*interior)
+        ax.scatter(xi, yi, c="black", s=8, label="Interior")
+
+    # Plot boundary points
+    xb, yb = zip(*boundary)
+    ax.scatter(xb, yb, c="red", s=16, label="Boundary")
+
+    # Meta
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_title(f"2D Cartesian Mesh (N={N})")
+
+    ax.set_aspect("equal")
+    ax.set_xlim(-0.02, 1.02)
+    ax.set_ylim(-0.02, 1.02)
+
+    plt.tight_layout()
+    plt.show()
+
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(exit=False)
+    plot_mesh(N=32)
