@@ -42,6 +42,11 @@ def f(x: float, y: float) -> float:
         ( 2*x  *  (x-1)**2)
     )
 
+def analytical_solution(x: float, y: float) -> float:
+    return (
+        x * (x-1)**2 * y *(y-1)
+    )
+
 def print_A(N):
     A = gen_A(N)
     h2 = grid.h(N)**2
