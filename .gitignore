@@ -1,0 +1,10 @@
+# Python
+.DS_Store
+__pycache__/
+
+#VIM
+*.swp
+*.swo
+
+#Emacs
+.#*
