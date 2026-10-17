@@ -203,6 +203,109 @@ class TestMesh(unittest.TestCase):
         self.assertEqual(uval(u, N, 2, 3), 13.0)
         self.assertEqual(uval(u, N, 4, 4), 24.0)
 
+    def test_k2rc(self):
+        N = 4
+
+        self.assertEqual(k2rc(N, 0), (0, 0))
+        self.assertEqual(k2rc(N, 4), (0, 4))
+        self.assertEqual(k2rc(N, 5), (1, 0))
+        self.assertEqual(k2rc(N, 6), (1, 1))
+        self.assertEqual(k2rc(N, 13), (2, 3))
+        self.assertEqual(k2rc(N, 24), (4, 4))
+
+    def test_k2rc_inverse(self):
+        """Verify k2rc is the inverse of uidx."""
+        for N in (1, 2, 4, 8, 32):
+            for row, col in product(range(N + 1), repeat=2):
+                k = uidx(N, row, col)
+                self.assertEqual(k2rc(N, k), (row, col))
+
+    def test_k2rc_invalid(self):
+        N = 4
+
+        for k in (-1, 25, 26, 100):
+            with self.assertRaises(ValueError):
+                k2rc(N, k)
+
+    def test_row_slice(self):
+        N = 4
+
+        self.assertEqual(row_slice(N, 0), slice(0, 5))
+        self.assertEqual(row_slice(N, 1), slice(5, 10))
+        self.assertEqual(row_slice(N, 2), slice(10, 15))
+        self.assertEqual(row_slice(N, 3), slice(15, 20))
+        self.assertEqual(row_slice(N, 4), slice(20, 25))
+
+    def test_row_slice_invalid(self):
+        N = 4
+
+        for row in (-1, 5, 10):
+            with self.assertRaises(IndexError):
+                row_slice(N, row)
+
+        with self.assertRaises(ValueError):
+            row_slice(0, 0)
+
+    def test_rowi(self):
+        N = 4
+
+        self.assertEqual(rowi(N, 0), [0, 1, 2, 3, 4])
+        self.assertEqual(rowi(N, 1), [5, 6, 7, 8, 9])
+        self.assertEqual(rowi(N, 2), [10, 11, 12, 13, 14])
+        self.assertEqual(rowi(N, 4), [20, 21, 22, 23, 24])
+
+    def test_rowi_consistency(self):
+        """Verify row indices agree with uidx."""
+        for N in (1, 2, 4, 8, 32):
+            for row in range(N + 1):
+                expected = [
+                    uidx(N, row, col)
+                    for col in range(N + 1)
+                ]
+
+                self.assertEqual(rowi(N, row), expected)
+
+    def test_rowv(self):
+        N = 4
+        u = [float(k) for k in range((N + 1)**2)]
+
+        self.assertEqual(rowv(N, u, 0), [0., 1., 2., 3., 4.])
+        self.assertEqual(rowv(N, u, 1), [5., 6., 7., 8., 9.])
+        self.assertEqual(rowv(N, u, 2), [10., 11., 12., 13., 14.])
+        self.assertEqual(rowv(N, u, 4), [20., 21., 22., 23., 24.])
+
+    def test_rowv_invalid_length(self):
+        N = 4
+
+        for length in (0, 16, 24, 26):
+            u = [0.0] * length
+
+            with self.assertRaises(ValueError):
+                rowv(N, u, 2)
+
+    def test_rowv_returns_copy(self):
+        """Verify changes to a returned row do not modify u."""
+        N = 4
+        u = [float(k) for k in range((N + 1)**2)]
+
+        row = rowv(N, u, 2)
+        row[0] = -100.0
+
+        self.assertEqual(u[10], 10.0)
+        self.assertEqual(row[0], -100.0)
+
+    def test_row_coverage(self):
+        """Verify rows cover the entire array without overlap."""
+        for N in (1, 2, 4, 8, 32):
+            indices = [
+                k
+                for row in range(N + 1)
+                for k in rowi(N, row)
+            ]
+
+            self.assertEqual(indices, list(range((N + 1)**2)))
+
+
 def plot_mesh(N: int = 32) -> None:
     """Plot interior and boundary points of a 2D Cartesian mesh."""
     print(f"\n\n --> Plotting mesh for N = {N}")
