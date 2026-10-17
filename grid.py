@@ -47,6 +47,31 @@ def bc_points(N: int) -> list[Tuple[float, float]]:
         if col == 0 or col == N or row == 0 or row == N
     ]
 
+def row_slice(N: int, row: int) -> slice:
+    """Return the slice corresponding to a row of the flattened grid.
+       Row slices are preferable to column slices because this array is row major """
+    if N < 1: raise ValueError(f"N must be >= 1, got {N}")
+    if not 0 <= row <= N: raise IndexError(f"row must be in [0, {N}], got {row}")
+
+    start = row * (N + 1)
+    stop = start + (N + 1)
+    return slice(start, stop)
+
+
+def rowi(N: int, row: int) -> list[int]:
+    """Return flat indices belonging to the specified row.
+       Row slices are preferable to column slices because this array is row major """
+    s = row_slice(N, row)
+    return list(range(s.start, s.stop))
+
+
+def rowv(N: int, u: list[float], row: int) -> list[float]:
+    """Return the values belonging to a row of the flattened solution.
+       Row slices are preferable to column slices because this array is row major """
+    if len(u) != (N + 1)**2: raise ValueError(f"Expected {(N + 1)**2} nodes, got {len(u)}")
+    return u[row_slice(N, row)]
+
+
 """
 Structured 2D Cartesian mesh for the unit square.
 
