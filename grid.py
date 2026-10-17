@@ -12,6 +12,12 @@ def uidx(N: int, row: int, col: int) -> int:
     """Given (row,col) get index of flat u"""
     return row * (N + 1) + col
 
+def k2rc(N: int, k: int) -> Tuple[float, float]:
+     """Given flat index k, return (row, col) of u."""
+     if not (0 <= k < (N + 1)**2):
+         raise ValueError(f"Invalid flat index k={k} for N={N}")
+     return divmod(k, N + 1)
+
 def calcN(ulen: int) -> int:
     """Calc N given h=1/N"""
     N = math.isqrt(ulen) - 1
@@ -40,7 +46,6 @@ def bc_points(N: int) -> list[Tuple[float, float]]:
         for col, row in product(range(N + 1), repeat=2)
         if col == 0 or col == N or row == 0 or row == N
     ]
-
 
 """
 Structured 2D Cartesian mesh for the unit square.
