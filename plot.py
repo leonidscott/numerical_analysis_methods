@@ -1,5 +1,6 @@
 import os
 import sys
+from typing import Dict
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, FFMpegWriter, PillowWriter
@@ -154,14 +155,16 @@ def animate_solution(us: list[list[float]], name: str, show_grid: bool = False,
     return anim
 
 
-def plot_iterations(qoi: list[float], ylabel: str, title: str) -> None:
+def plot_iterations(runs: list[Dict], qoi: str, ylabel: str, title: str) -> None:
     fig, ax = plt.subplots(figsize=(8, 5))
 
-    ax.plot(range(len(qoi)), qoi, linewidth=1.5)
+    for run in runs:
+        ax.plot(range(len(run[qoi])), run[qoi], linewidth=1.5, label=run['name'])
 
     ax.set_xlabel("Iteration")
     ax.set_ylabel(ylabel)
     ax.set_title(title)
+    ax.legend()
     ax.grid(True, alpha=0.1)
 
     plt.tight_layout()

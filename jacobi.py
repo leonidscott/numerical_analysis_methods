@@ -39,8 +39,8 @@ def jsolve(u0: list[float], f: list[float], istop: int, nplot: int = 0) -> tuple
             U[k] += deltas[d]
 
         # Stats 'n stuff
-        l2res = L2norm(res)
-        print(f",    residual: {l2res}")
+        norm_res = L2norm(res) / L2norm(f)
+        print(f",    residual: {norm_res}")
         if (nplot!=0 and i%nplot == 0):
             if(nplot != 1): print("Plotting solution")
             nplots.append(U.copy())

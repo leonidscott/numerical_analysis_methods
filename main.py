@@ -3,6 +3,7 @@ import os
 import sys
 import math
 from functional import seq
+import jacobi
 import matplotlib.pyplot as plt
 
 CWD=os.path.dirname(__file__)
@@ -11,6 +12,7 @@ sys.path.insert(1, CWD)
 import grid
 import laplace
 from jacobi import jsolve
+from gauss_seidel import gs_diag, gs_row
 from plot import animate_solution, plot_iterations, plot_solution
 # --- Local Deps --------------------------
 
@@ -64,39 +66,62 @@ def calc_roc(Uk, U0, Utrue,i) -> float:
     rate_of_conv = -1.0 * math.log(error_norm(Uk, Utrue) / error_norm(Uk, U0)) / i
     return rate_of_conv
 
+methods = [
+    {"name":"Jacobi",
+     "fname":"pj",
+     "fn":jsolve},
+
+    {"name":"Gauss Seidel - Row",
+     "fname":"gsr",
+     "fn":gs_row},
+
+    {"name": "Gauss Seidel - Diag",
+     "fname" : "gsd",
+     "fn" : gs_diag}]
+
 if __name__ == "__main__":
     print("Hello world")
     N = 32
-    istop = 200
+    istop = 64
     u0 = init_u(N)
     f = init_f(N)
 
     # Solve
-    U,nplots  = jsolve(u0, f, istop, nplot=1)
+    def run_method(method: str):
+        # Solve
+        m = seq(methods).filter(lambda mtd: mtd["name"]==method).to_list()[0]
+        U,nplots = m["fn"](u0,f,istop,nplot=1)
+
+        # Verify Boundary Conditions are correct
+        assert(verify_bcs(U))
+        print(f"BCs consistent? {verify_bcs(U)}")
+
+        # Plot Soln
+        name = m["name"]
+        fname = m["fname"]
+        plot_solution(U, name=f"{name}: {N} - istop: {istop}", show_grid=True)
+        anim = animate_solution(nplots, name=f"{name}", show_grid=True,
+                                filename=CWD+f"/imgs/{fname}-N={N}-istop={istop}.mp4")
+
+        return {"name": method, "U": U, "nplots": nplots}
+
+    runs = seq(["Jacobi", "Gauss Seidel - Row", "Gauss Seidel - Diag"]).map(run_method).to_list()
 
     # Plot Analytical Solution
     true_soln = generate_analytical_solution(N)
     plot_solution(true_soln, name=f"Analytical: {N}", show_grid=False)
 
-
-    # Plot Approximated Solution
-    plot_solution(U, name=f"Jacobi: {N} - istop: {istop}", show_grid=True)
-    #anim = animate_solution(nplots, name=f"Jacobi: {N}", show_grid=True,
-    #                        filename=CWD+f"/imgs/jacobi-N={N}-istop={istop}.mp4")
-
-    # Verify Boundary Conditions are correct
-    assert(verify_bcs(U))
-    print(f"BCs consistent? {verify_bcs(U)}")
-
     # Plot Error & Rate of Convergence
-    error_k = seq(nplots).map(lambda uk : error_norm(uk, true_soln)).to_list()
-    plot_iterations(error_k, "error_norm", "error norm")
+    for run in runs:
+        error_k = seq(run["nplots"]).map(lambda uk : error_norm(uk, true_soln)).to_list()
 
-    roc = (
-        seq(range(1,len(nplots))) # Prevent division by zero error when i = 0
-        .map(lambda i: calc_roc(nplots[i], u0, true_soln, i))
-        .to_list()
-    )
-    plot_iterations(roc, "$R_k$", f"Rate of Convergence for Jacobi - N={N}")
+        roc = (
+            seq(range(1,len(run["nplots"]))) # Prevent division by zero error when i = 0
+            .map(lambda i: calc_roc(run["nplots"][i], u0, true_soln, i))
+            .to_list()
+        )
+        run.update({"error_k": error_k, "roc": roc})
 
+    plot_iterations(runs, "error_k", "error_norm", "error norm")
+    plot_iterations(runs, "roc", "$R_k$", f"Rate of Convergence - N={N}")
     plt.show()
