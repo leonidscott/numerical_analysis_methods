@@ -1,6 +1,5 @@
 import os
 import sys
-from functional import seq, pseq
 
 CWD=os.path.dirname(__file__)
 # --- Local Deps --------------------------
@@ -18,40 +17,66 @@ def central_stencil(u: list[float], point:tuple[float,float]) -> float:
 
     stencil = (u[uidx(r,c+1)] + u[uidx(r,c-1)] + u[uidx(r+1,c)] + u[uidx(r-1,c)]
                - 4*u[uidx(r,c)])
-    return (stencil / h**2)
+    return (-1.0 * stencil / h**2)
 
-def gfn(u: list[float],f:list[float], point:tuple[float,float]) -> float:
-    """ residual_{r,c} for 2nd order central scheme res=(f - Au)"""
-    uidx = (lambda  r,c : g.uidx(N,r,c))
-    _,c = point
+def Au(u: list[float]) -> list[float]:
+    N = g.calcN(len(u))
+    Au = [0.0] * len(u)
 
-    Au = central_stencil(u,point)
-    return Au - f[uidx(f,c)]
+    for r, c in g.interior_points(N):
+        k = g.uidx(N, r, c)
+        Au[k] = central_stencil(u, (r, c))
+
+    return Au
 
 def cg_solve(u0: list[float], f: list[float], istop: int, nplot: int = 0) -> list:
     print(f"Running Conjugate Gradient with istop: {istop}")
-    Us = []
+    snapshots = []
     uk = u0.copy()
-
     N = g.calcN(len(u0))
-    inter_points = seq(g.interior_points(N))
-    gk = (inter_points.map(lambda pt: gfn(uk,f,pt)).to_list())
-    dk = (seq(gk).map(lambda gki: -1.0 * gki).to_list())
-    gamma_k = L2norm(gk)
+
+    # Checks & Prep
+    if len(f) != len(u0): raise ValueError("u0 and f dimensions differ")
+    for r, c in g.bc_points(N):
+        f[g.uidx(N, r, c)] = 0.0
+
+
+    Auk = Au(uk)
+    gk = [Auk[i] - f[i] for i in range(len(f))]
+    dk = [-gi for gi in gk]
+    gamma_k = L2prod(gk,gk)
 
     for i in range(1,istop+1):
-        print(f"  iteration: {i}")
-        qk = (inter_points.map(lambda pt: central_stencil(dk,pt)).to_list())
+        print(f"  iteration: {i}",end="")
+        qk = Au(dk)
         alpha_k = gamma_k / L2prod(dk,qk)
-        uk = (seq(range(len(uk))).map(lambda i : uk[i] + alpha_k * dk[i]).to_list())
-        gk = (seq(range(len(gk))).map(lambda i : gk[i] + alpha_k * qk[i]).to_list())
+
+        uk = [
+            uk[k] + alpha_k * dk[k]
+            for k in range(len(uk))
+        ]
+
+        gk = [
+            gk[k] + alpha_k * qk[k]
+            for k in range(len(gk))
+        ]
+
 
         gamma_old = gamma_k
         gamma_k = L2prod(gk,gk)
-        beta = gamma_k/gamma_old
+        beta_k = gamma_k/gamma_old
 
-        dk = (seq(range(len(gk))).map(lambda i : -1.0 * gk[i] + beta * dk[i]))
+        dk = [
+            -gk[k] + beta_k * dk[k]
+            for k in range(len(dk))
+        ]
 
-        if (i == istop-1 or (nplot!=0 and i%nplot == 0)):
-            Us.append(uk.copy())
-    return Us
+        # Residual Calculation
+        Auk = Au(uk)
+        res_vec = [ f[idx] - Auk[idx] for idx in range(len(Auk)) ]
+        res_val = L2norm(res_vec)
+        print(f", residual: {res_val}")
+
+        if ( (nplot!=0 and i%nplot == 0) or (i == istop) ):
+            snapshots.append(uk.copy())
+    return snapshots
